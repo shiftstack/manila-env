@@ -1,0 +1,9 @@
+all:
+  hosts:
+    localhost:
+  children:
+    devstack:
+      hosts:
+        {{ devstack.server.public_v4 }}:
+
+

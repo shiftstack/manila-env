@@ -1,0 +1,27 @@
+- name: delete devstack
+  os_server:
+    name: devstack
+    state: absent
+    wait: yes
+- name: delete custom security group
+  os_security_group:
+    state: absent
+    name: manila-env-security-group
+- name: delete router for the private network
+  os_router:
+    state: absent
+    name: manila-env-private-router
+- name: delete private subnet for the private network
+  os_subnet:
+    state: absent
+    name: manila-env-private-subnet
+- name: delete private network for the host VM
+  os_network:
+    state: absent
+    name: manila-env-private-net
+- name: delete local login scripts
+  file:
+    state: absent
+    path: "{{ item }}"
+  with_items:
+    - "login-devstack.sh"

@@ -1,0 +1,60 @@
+- name: Wait for instances to finish booting
+  connection: local
+  wait_for:
+    host="{{ansible_ssh_host|default(inventory_hostname)}}"
+    search_regex=OpenSSH
+    port=22
+    delay=30
+    timeout=600
+
+- name: Gather facts now that we know the instances are ready
+  setup:
+    filter: "ansible_*"
+
+- name: build hosts file
+  become: yes
+  lineinfile: dest=/etc/hosts regexp='^{{ hostvars[item].ansible_default_ipv4.address }}.*$' line="{{ hostvars[item].ansible_default_ipv4.address }} {{ hostvars[item].ansible_hostname }} {{ hostvars[item].ansible_nodename }}" state=present
+  when: hostvars[item].ansible_default_ipv4.address is defined
+  with_items: "{{ groups['cluster'] }}"
+
+- name: disable selinux
+  become: yes
+  selinux: state=disabled
+
+- name: disable of selinux - now
+  become: yes
+  command: setenforce 0
+
+- name: Run sysctl
+  become: yes
+  command: sysctl --system
+
+- name: install utility programs
+  become: yes
+  yum:
+    disable_gpg_check: yes
+    state: present
+    name:
+      - wget
+      - ntp
+      - screen
+      - epel-release
+      - vim
+      - iptables
+      - iptables-utils
+      - iptables-services
+      - ncurses-term
+      - kernel-devel
+      - kernel-headers
+
+- name: install epel utility programs
+  become: yes
+  yum:
+    state: present
+    disable_gpg_check: yes
+    name:
+      - jq
+      - lvm2
+      - yum-utils
+      - device-mapper-persistent-data
+

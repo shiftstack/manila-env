@@ -1,0 +1,67 @@
+---
+# tasks file for devstack
+- name: Install git
+  become: yes
+  yum:
+    name: git
+    state: latest
+
+- name: Create /opt/stack
+  become: yes
+  file: path=/opt/stack
+        state=directory
+        owner={{ansible_env.USER}}
+        group={{ansible_env.USER}}
+
+- name: Clone devstack
+  git: repo=https://opendev.org/openstack-dev/devstack
+       dest={{ansible_env.HOME}}/devstack
+       update=no
+       version=stable/train
+
+- name: Install ~/devstack/local.conf
+  copy: dest={{ansible_env.HOME}}/devstack/local.conf
+        src=local.conf
+        mode=0644
+        owner={{ansible_env.USER}}
+
+# The CentOS python-setuptools is too old
+# for devstack and it will use its own version
+# of setuptools
+- name: uninstall OS python-setuptools
+  become: yes
+  package:
+    name: python-setuptools
+    state: absent
+
+- name: run stack.sh to deploy manila
+  command: ./stack.sh
+  args:
+    chdir: /home/centos/devstack
+    creates: /opt/stack/manila
+
+- name: generate admin credentials
+  shell: |
+    cd /home/centos/devstack
+    export PATH=/usr/sbin:$PATH
+    source ./openrc admin admin
+    env | awk '/^OS_/{printf "export %s\n", $0}' > /home/centos/adminrc
+
+- name: generate demo credentials
+  shell: |
+    cd /home/centos/devstack
+    export PATH=/usr/sbin:$PATH
+    source ./openrc demo demo
+    env | awk '/^OS_/{printf "export %s\n", $0}' > /home/centos/demorc
+
+- name: get adminrc
+  fetch:
+    src: /home/centos/adminrc
+    dest: adminrc
+    flat: yes
+
+- name: get demorc
+  fetch:
+    src: /home/centos/demorc
+    dest: demorc
+    flat: yes
