@@ -3,14 +3,16 @@
   connection: local
   vars:
     ansible_python_interpreter: "/usr/bin/env python3"
+
   vars_files:
     - keys.yml
+    - global_vars.yml
   roles:
     - openstack_infra
   tags:
   - provision_hosts
 
-- hosts: devstack
+- hosts: cluster_host
   gather_facts: false
   vars_files:
     - "global_vars.yml"
@@ -19,11 +21,11 @@
   tags:
   - prepare_cluster_hosts
 
-- hosts: devstack
+- hosts: devstack_host
   roles:
     - devstack
   tags:
-  - install_manila
+  - install_devstack
 
 - hosts: devstack
   roles:

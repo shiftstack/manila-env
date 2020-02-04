@@ -8,3 +8,8 @@ clouds:
       username: <your-user-name>
       password: <your-password>
     region: RegionOne
+    networks:
+    - name: <name-of-external-network-to-use>
+      nat_source: true
+# networks: section maybe omited but the os cloud being deployed against should be configured correctly,
+# with a default external network which has ipv4 routing.

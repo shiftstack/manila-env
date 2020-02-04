@@ -1,112 +1,138 @@
 - name: create a custom security group
   os_security_group:
     state: present
-    name: manila-env-security-group
+    name: "{{ manila_env_security_group }}"
     description: Security group with ingress to ports 22, 80, 443, 6443
+  tags:
+    - provision_infra
 
 - name: add ssh ingress rule
   os_security_group_rule:
     state: present
-    security_group: manila-env-security-group
+    security_group: "{{ manila_env_security_group }}"
     protocol: tcp
     port_range_min: 22
     port_range_max: 22
+  tags:
+     - provision_infra
 
 - name: add http ingress rule
   os_security_group_rule:
     state: present
-    security_group: manila-env-security-group
+    security_group: "{{ manila_env_security_group }}"
     protocol: tcp
     port_range_min: 80
     port_range_max: 80
+  tags:
+     - provision_infra
 
 - name: add https ingress rule
   os_security_group_rule:
     state: present
-    security_group: manila-env-security-group
+    security_group: "{{ manila_env_security_group }}"
     protocol: tcp
     port_range_min: 443
     port_range_max: 443
+  tags:
+     - provision_infra
 
 - name: allow icmp on the private cluster network
   os_security_group_rule:
     state: present
-    security_group: manila-env-security-group
+    security_group: "{{ manila_env_security_group }}"
     protocol: icmp
-    remote_ip_prefix: 192.168.0.0/24
+    remote_ip_prefix: "{{ manila_env_private_subnet_cidr }}"
+  tags:
+     - provision_infra
 
 - name: allow unrestricted TCP on the private cluster network
   os_security_group_rule:
     state: present
-    security_group: manila-env-security-group
+    security_group: "{{ manila_env_security_group }}"
     protocol: tcp
     port_range_min: 1
     port_range_max: 65535
-    remote_ip_prefix: 192.168.0.0/24
+    remote_ip_prefix: "{{ manila_env_private_subnet_cidr }}"
+  tags:
+     - provision_infra
 
 - name: allow ping
   os_security_group_rule:
     state: present
-    security_group: manila-env-security-group
+    security_group: "{{ manila_env_security_group }}"
     protocol: icmp
     remote_ip_prefix: 0.0.0.0/0
+  tags:
+     - provision_infra
 
 - name: allow unrestricted TCP from the outside
   os_security_group_rule:
     state: present
-    security_group: manila-env-security-group
+    security_group: "{{ manila_env_security_group }}"
     protocol: tcp
     port_range_min: 1
     port_range_max: 65535
     remote_ip_prefix: 0.0.0.0/0
+  tags:
+     - provision_infra
 
 - name: allow unrestricted UDP from the outside
   os_security_group_rule:
     state: present
-    security_group: manila-env-security-group
+    security_group: "{{ manila_env_security_group }}"
     protocol: udp
     port_range_min: 1
     port_range_max: 65535
     remote_ip_prefix: 0.0.0.0/0
+  tags:
+     - provision_infra
 
 - name: create keypair
   os_keypair:
     state: present
     name: "{{ key_name }}"
     public_key_file: "{{ public_key_file }}"
+  tags:
+     - provision_infra
 
 - name: create private network for the cluster
   os_network:
     state: present
-    name: manila-env-private-net
+    name: "{{ manila_env_private_net }}"
     port_security_enabled: yes
+  tags:
+     - provision_infra
 
-- name: create private subnet on that network
+- name: create private subnet in private network
   os_subnet:
     state: present
-    network_name: manila-env-private-net
-    name: manila-env-private-subnet
-    cidr: 192.168.0.0/24
-    gateway_ip: 192.168.0.1
+    network_name: "{{ manila_env_private_net }}"
+    name: "{{ manila_env_private_subnet }}"
+    cidr: "{{ manila_env_private_subnet_cidr }}"
+    gateway_ip: "{{ manila_env_private_subnet_gateway_ip }}"
+  tags:
+     - provision_infra
 
 - name: create router for the private network
   os_router:
     state: present
-    name: manila-env-private-router
-    interfaces: manila-env-private-subnet
-    network: external
+    name: "{{ manila_env_private_router }}"
+    interfaces: "{{ manila_env_private_subnet }}"
+    network: "{{ external_network }}"
+  tags:
+     - provision_infra
 
-- name: launch devstack
+- name: deploy devstack host
   os_server:
-    name: devstack
+    name: "{{ devstack_host_name }}"
     state: present
     wait: yes
     auto_ip: yes
-    image: 'centos7-1907'
-    security_groups: manila-env-security-group
+    image: "{{ devstack_image }}"
+    security_groups: "{{ manila_env_security_group }}"
     flavor: m1.large
     key_name: "{{ key_name }}"
-    network: manila-env-private-net
+    network: "{{ manila_env_private_net }}"
     userdata: |
       #cloud-config
       runcmd:
@@ -115,20 +141,25 @@
        - sed -i -e 's/#\?\(GSSAPICleanupCredentials\s*\).*$/\1 no/' /etc/ssh/sshd_config
        - printf "\nKexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com\n" >> /etc/ssh/sshd_config
        - service sshd restart
-  register: devstack
+  register: devstack_host_info
+  tags:
+    - provision_devstack
 
-- name: add devstack to our ansible inventory
-  add_host: hostname="{{ devstack.server.public_v4 }}"
-            groups=cluster,devstack
+- name: add devstack host to our ansible inventory
+  add_host: hostname="{{ devstack_host_info.server.public_v4 }}"
+            groups=devstack
             ansible_ssh_private_key_file="{{private_key_file}}"
-            ansible_ssh_user=centos
+            ansible_ssh_user="{{ devstack_user }}"
+
 
 - name: Create local login script
-  template: src=login-devstack.sh.j2
-            dest=./login-devstack.sh
-            mode=0755
+  template:
+    src: login-devstack.sh.j2
+    dest: ./login-devstack.sh
+    mode: 0755
 
 - name: persist dynamic inventory to yml file
-  template: src=inventory.yml.j2
-            dest=inventory.yml
-            mode=0644
+  template:
+    src: devstack_host_inventory.yml.j2
+    dest: devstack_host_inventory.yml
+    mode: 0644

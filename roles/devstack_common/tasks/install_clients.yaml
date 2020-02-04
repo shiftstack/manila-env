@@ -1,7 +1,7 @@
-- name: yum install centos-release-openstack-stein
+- name: yum install "{{ openstack_release}}"
   become: yes
   yum:
-    name: centos-release-openstack-stein
+    name: "{{ openstack_release}}"
     state: latest
 
 - name: yum install python-manilaclient

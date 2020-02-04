@@ -1,0 +1,79 @@
+######################################################################
+# This local.conf sets up Devstack with manila enabling the CEPHFS
+# driver which operates in driver_handles_share_services=False
+# mode. Pay attention to the storage protocol configuration to run
+# the cephfs driver with either the native CEPHFS protocol or the NFS
+# protocol
+#######################################################################
+
+[[local|localrc]]
+ADMIN_PASSWORD=secret
+DATABASE_PASSWORD=$ADMIN_PASSWORD
+RABBIT_PASSWORD=$ADMIN_PASSWORD
+SERVICE_PASSWORD=$ADMIN_PASSWORD
+DEST=/opt/stack
+DATA_DIR=/opt/stack/data
+LOGFILE=/opt/stack/devstacklog.txt
+
+
+# Enabling manila services
+LIBS_FROM_GIT=python-manilaclient
+MANILA_GIT_URL=https://opendev.org/openstack/manila
+MANILA_REF={{ manila_ref }}
+enable_plugin manila $MANILA_GIT_URL $MANILA_REF
+#enable_plugin manila-ui https://github.com/openstack/manila-ui
+#enable_plugin manila-tempest-plugin https://git.openstack.org/openstack/manila-tempest-plugin
+
+
+# Enabling ceph
+CEPH_GIT_URL=https://opendev.org/openstack/devstack-plugin-ceph
+CEPH_REF={{ ceph_ref}}
+enable_plugin devstack-plugin-ceph $CEPH_GIT_URL $CEPH_REF
+ENABLE_CEPH_MANILA=True
+ENABLE_CEPH_NOVA=False
+ENABLE_CEPH_GLANCE=False
+ENABLE_CEPH_CINDER=False
+ENABLE_CEPH_C_BAK=False
+# Note that swift must not be enabled if ENABLE_CEPH_RGW=True
+ENABLE_CEPH_RGW=False
+
+
+# IMPORTANT - Comment out / remove the following line to use
+# the CEPH driver with the native CEPHFS protocol
+MANILA_CEPH_DRIVER=cephfsnfs
+
+# Comment out the following to use the Ceph Native driver
+MANILA_CEPH_DRIVER=cephfsnfs
+
+
+# CEPHFS backend options
+MANILA_SERVICE_IMAGE_ENABLED=False
+MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS='snapshot_support=False'
+MANILA_CONFIGURE_DEFAULT_TYPES=True
+
+debug=True
+
+ENABLED_SERVICES=mysql,rabbit,keystone,manila,m-api,m-sch,m-shr,m-dat
+#ENABLED_SERVICES+=
+
+
+# not sure if we need anything below this line:
+# Locally we need EPEL b/c we don't have the special mirrors present in infra
+SKIP_EPEL_INSTALL=False
+
+# Set to True to re-clone project repos even if they already exist
+RECLONE=False
+
+# Set to True if you want to run stack.sh w/o an internet connection
+OFFLINE=False
+
+# Set to True to force upgrade of pip packages
+PIP_UPGRADE=False
+
+DOWNLOAD_DEFAULT_IMAGES=False
+
+IP_VERSION=4
+#IP_VERSION=4+6
+
+# SERVICE_IP_VERSION=6
+SERVICE_IP_VERSION=4

@@ -1,24 +1,24 @@
 - name: delete devstack
   os_server:
-    name: devstack
+    name: "{{ devstack_host_name }}"
     state: absent
     wait: yes
 - name: delete custom security group
   os_security_group:
     state: absent
-    name: manila-env-security-group
+    name: "{{ manila_env_security_group }}"
 - name: delete router for the private network
   os_router:
     state: absent
-    name: manila-env-private-router
+    name: "{{ manila_env_private_router }}"
 - name: delete private subnet for the private network
   os_subnet:
     state: absent
-    name: manila-env-private-subnet
+    name: "{{ manila_env_private_subnet }}"
 - name: delete private network for the host VM
   os_network:
     state: absent
-    name: manila-env-private-net
+    name: "{{ manila_env_private_net }}"
 - name: delete local login scripts
   file:
     state: absent

@@ -3,3 +3,4 @@ clouds.yaml
 /login*.sh
 *.retry
 .venv
+*.log

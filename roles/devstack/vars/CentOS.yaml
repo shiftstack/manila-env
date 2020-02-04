@@ -1,0 +1,7 @@
+distribution_required_packages:
+  - git-core
+  - python3
+  - python3-devel
+  - ntp
+  - qemu-img
+  - bridge-utils

@@ -1,10 +1,42 @@
 ---
 # tasks file for devstack
-- name: Install git
+- name: Include devstack common packages list
+  include_vars:
+    file: common.yml
+
+- name: Include devstack os specific packages list
+  include_vars:
+    file: "{{ ansible_distribution }}.yaml"
+  ignore_errors: yes
+
+- name: Install ntp
   become: yes
-  yum:
-    name: git
-    state: latest
+  package:
+    name: ntp
+    state: present
+
+- name: Enable and start ntp
+  become: yes
+  service:
+    name: ntpd
+    enabled: yes
+    state: started
+
+- name: Install generic packages
+  become: yes
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - "{{ common_required_packages | default([]) }}"
+
+- name: Install distribution specific packages
+  become: yes
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - "{{ distribution_required_packages | default([]) }}"
 
 - name: Create /opt/stack
   become: yes
@@ -13,31 +45,35 @@
         owner={{ansible_env.USER}}
         group={{ansible_env.USER}}
 
-- name: Clone devstack
-  git: repo=https://opendev.org/openstack-dev/devstack
-       dest={{ansible_env.HOME}}/devstack
-       update=no
-       version=stable/train
+- name: Clone devstack repo
+  git:
+    repo: https://opendev.org/openstack-dev/devstack
+    dest: "{{ansible_env.HOME}}/devstack"
+    update: no
+    version: "{{ devstack_ref }}"
 
 - name: Install ~/devstack/local.conf
-  copy: dest={{ansible_env.HOME}}/devstack/local.conf
-        src=local.conf
-        mode=0644
-        owner={{ansible_env.USER}}
+  template:
+    dest: "{{ ansible_env.HOME }}/devstack/local.conf"
+    src: local.conf.j2
+    mode: 0644
+    owner: "{{ ansible_env.USER }}"
+
 
 # The CentOS python-setuptools is too old
 # for devstack and it will use its own version
 # of setuptools
-- name: uninstall OS python-setuptools
-  become: yes
-  package:
-    name: python-setuptools
-    state: absent
+#- name: uninstall OS python-setuptools
+#  become: yes
+#  package:
+#    name: python-setuptools
+#    state: absent
+- pause:
 
 - name: run stack.sh to deploy manila
   command: ./stack.sh
   args:
-    chdir: /home/centos/devstack
+    chdir: "{{ansible_env.HOME}}/devstack"
     creates: /opt/stack/manila
 
 - name: generate admin credentials
