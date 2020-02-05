@@ -1,3 +1,17 @@
+- name: Gather facts from host
+  setup:
+  tags:
+    - never
+    - provision_infra
+    - deploy_devstack_host
+
+
+- name: Include security group file
+  include_vars:
+    file: security_group_rules.yaml
+  tags:
+    - provision_infra
+
 - name: create a custom security group
   os_security_group:
     state: present
@@ -6,86 +20,17 @@
   tags:
     - provision_infra
 
-- name: add ssh ingress rule
+- name: "Adding security group rule "
   os_security_group_rule:
     state: present
     security_group: "{{ manila_env_security_group }}"
-    protocol: tcp
-    port_range_min: 22
-    port_range_max: 22
+    protocol: "{{ item.protocol | default(omit)}}"
+    port_range_min: "{{ item.port_range_min | default(omit)}}"
+    port_range_max: "{{ item.port_range_max | default(omit)}}"
+    remote_ip_prefix: "{{ item.remote_ip_prefix | default(omit)}}"
+  with_items: "{{ security_group_rules }}"
   tags:
-     - provision_infra
-
-- name: add http ingress rule
-  os_security_group_rule:
-    state: present
-    security_group: "{{ manila_env_security_group }}"
-    protocol: tcp
-    port_range_min: 80
-    port_range_max: 80
-  tags:
-     - provision_infra
-
-- name: add https ingress rule
-  os_security_group_rule:
-    state: present
-    security_group: "{{ manila_env_security_group }}"
-    protocol: tcp
-    port_range_min: 443
-    port_range_max: 443
-  tags:
-     - provision_infra
-
-- name: allow icmp on the private cluster network
-  os_security_group_rule:
-    state: present
-    security_group: "{{ manila_env_security_group }}"
-    protocol: icmp
-    remote_ip_prefix: "{{ manila_env_private_subnet_cidr }}"
-  tags:
-     - provision_infra
-
-- name: allow unrestricted TCP on the private cluster network
-  os_security_group_rule:
-    state: present
-    security_group: "{{ manila_env_security_group }}"
-    protocol: tcp
-    port_range_min: 1
-    port_range_max: 65535
-    remote_ip_prefix: "{{ manila_env_private_subnet_cidr }}"
-  tags:
-     - provision_infra
-
-- name: allow ping
-  os_security_group_rule:
-    state: present
-    security_group: "{{ manila_env_security_group }}"
-    protocol: icmp
-    remote_ip_prefix: 0.0.0.0/0
-  tags:
-     - provision_infra
-
-- name: allow unrestricted TCP from the outside
-  os_security_group_rule:
-    state: present
-    security_group: "{{ manila_env_security_group }}"
-    protocol: tcp
-    port_range_min: 1
-    port_range_max: 65535
-    remote_ip_prefix: 0.0.0.0/0
-  tags:
-     - provision_infra
-
-- name: allow unrestricted UDP from the outside
-  os_security_group_rule:
-    state: present
-    security_group: "{{ manila_env_security_group }}"
-    protocol: udp
-    port_range_min: 1
-    port_range_max: 65535
-    remote_ip_prefix: 0.0.0.0/0
-  tags:
-     - provision_infra
+    - provision_infra
 
 - name: create keypair
   os_keypair:
@@ -143,13 +88,15 @@
        - service sshd restart
   register: devstack_host_info
   tags:
-    - provision_devstack
+    - deploy_devstack_host
 
 - name: add devstack host to our ansible inventory
   add_host: hostname="{{ devstack_host_info.server.public_v4 }}"
             groups=devstack
             ansible_ssh_private_key_file="{{private_key_file}}"
             ansible_ssh_user="{{ devstack_user }}"
+  tags:
+    - deploy_devstack_host
 
 
 - name: Create local login script
@@ -157,9 +104,13 @@
     src: login-devstack.sh.j2
     dest: ./login-devstack.sh
     mode: 0755
+  tags:
+    - deploy_devstack_host
 
 - name: persist dynamic inventory to yml file
   template:
     src: devstack_host_inventory.yml.j2
     dest: devstack_host_inventory.yml
     mode: 0644
+  tags:
+    - deploy_devstack_host

@@ -1,0 +1,27 @@
+# This file cotains a list of openstack security group rules
+# All definitions should be of the following format:
+# - name: Any valid string to describe the rule
+#   protocol: <protocol>
+#   port_range_min: #
+#   port_range_max: #
+#   remote_ip_prefix: cidr_of_remote/ip
+#
+#    if a value is not defined it should be filled with ""
+
+security_group_rules:
+
+  - name: allow icmp
+    protocol: icmp
+    remote_ip_prefix: 0.0.0.0/0
+
+  - name: allow all TCP
+    protocol: tcp
+    port_range_min: 1
+    port_range_max: 65535
+    remote_ip_prefix: 0.0.0.0/0
+
+  - name: allow all UDP
+    protocol: udp
+    port_range_min: 1
+    port_range_max: 65535
+    remote_ip_prefix: 0.0.0.0/0

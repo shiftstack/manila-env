@@ -1,19 +1,32 @@
 ---
 # tasks file for devstack
+- name: Gather facts from host
+  setup:
+  tags:
+    - never
+    - prepair_devstack_host
+    - deploy_devstack
+
 - name: Include devstack common packages list
   include_vars:
     file: common.yml
+  tags:
+    - prepair_devstack_host
 
 - name: Include devstack os specific packages list
   include_vars:
     file: "{{ ansible_distribution }}.yaml"
   ignore_errors: yes
+  tags:
+    - prepair_devstack_host
 
 - name: Install ntp
   become: yes
   package:
     name: ntp
-    state: present
+    state: latest
+  tags:
+    - prepair_devstack_host
 
 - name: Enable and start ntp
   become: yes
@@ -21,22 +34,28 @@
     name: ntpd
     enabled: yes
     state: started
+  tags:
+    - prepair_devstack_host
 
-- name: Install generic packages
+- name: Install and update generic packages
   become: yes
   package:
     name: "{{ item }}"
-    state: present
+    state: latest
   with_items:
     - "{{ common_required_packages | default([]) }}"
+  tags:
+    - prepair_devstack_host
 
-- name: Install distribution specific packages
+- name: Install and update distribution specific packages
   become: yes
   package:
     name: "{{ item }}"
-    state: present
+    state: latest
   with_items:
     - "{{ distribution_required_packages | default([]) }}"
+  tags:
+    - prepair_devstack_host
 
 - name: Create /opt/stack
   become: yes
@@ -44,6 +63,8 @@
         state=directory
         owner={{ansible_env.USER}}
         group={{ansible_env.USER}}
+  tags:
+    - prepair_devstack_host
 
 - name: Clone devstack repo
   git:
@@ -51,6 +72,8 @@
     dest: "{{ansible_env.HOME}}/devstack"
     update: no
     version: "{{ devstack_ref }}"
+  tags:
+    - prepair_devstack_host
 
 - name: Install ~/devstack/local.conf
   template:
@@ -58,6 +81,8 @@
     src: local.conf.j2
     mode: 0644
     owner: "{{ ansible_env.USER }}"
+  tags:
+    - prepair_devstack_host
 
 
 # The CentOS python-setuptools is too old
@@ -68,13 +93,20 @@
 #  package:
 #    name: python-setuptools
 #    state: absent
-- pause:
+- name: run unstack.sh to cleanup system
+  command: ./unstack.sh
+  args:
+    chdir: "{{ansible_env.HOME}}/devstack"
+  tags:
+    - deploy_devstack
 
 - name: run stack.sh to deploy manila
   command: ./stack.sh
   args:
     chdir: "{{ansible_env.HOME}}/devstack"
     creates: /opt/stack/manila
+  tags:
+    - deploy_devstack
 
 - name: generate admin credentials
   shell: |
@@ -82,6 +114,8 @@
     export PATH=/usr/sbin:$PATH
     source ./openrc admin admin
     env | awk '/^OS_/{printf "export %s\n", $0}' > /home/centos/adminrc
+  tags:
+    - deploy_devstack
 
 - name: generate demo credentials
   shell: |
@@ -89,15 +123,21 @@
     export PATH=/usr/sbin:$PATH
     source ./openrc demo demo
     env | awk '/^OS_/{printf "export %s\n", $0}' > /home/centos/demorc
+  tags:
+    - deploy_devstack
 
 - name: get adminrc
   fetch:
     src: /home/centos/adminrc
     dest: adminrc
     flat: yes
+  tags:
+    - deploy_devstack
 
 - name: get demorc
   fetch:
     src: /home/centos/demorc
     dest: demorc
     flat: yes
+  tags:
+    - deploy_devstack

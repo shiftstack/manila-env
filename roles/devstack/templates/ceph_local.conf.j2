@@ -19,7 +19,7 @@ LOGFILE=/opt/stack/devstacklog.txt
 # Enabling manila services
 LIBS_FROM_GIT=python-manilaclient
 MANILA_GIT_URL=https://opendev.org/openstack/manila
-MANILA_REF={{ manila_ref }}
+MANILA_REF=stable/train
 enable_plugin manila $MANILA_GIT_URL $MANILA_REF
 #enable_plugin manila-ui https://github.com/openstack/manila-ui
 #enable_plugin manila-tempest-plugin https://git.openstack.org/openstack/manila-tempest-plugin
@@ -27,7 +27,7 @@ enable_plugin manila $MANILA_GIT_URL $MANILA_REF
 
 # Enabling ceph
 CEPH_GIT_URL=https://opendev.org/openstack/devstack-plugin-ceph
-CEPH_REF={{ ceph_ref}}
+CEPH_REF=master
 enable_plugin devstack-plugin-ceph $CEPH_GIT_URL $CEPH_REF
 ENABLE_CEPH_MANILA=True
 #ENABLE_CEPH_NOVA=False
