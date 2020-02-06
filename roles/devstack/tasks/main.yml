@@ -7,6 +7,7 @@
     - prepair_devstack_host
     - deploy_devstack
 
+
 - name: Include devstack common packages list
   include_vars:
     file: common.yml
@@ -19,6 +20,12 @@
   ignore_errors: yes
   tags:
     - prepair_devstack_host
+
+- name: Update pip to latest version
+  become: yes
+  pip:
+    name: pip
+    state: latest
 
 - name: Install ntp
   become: yes
@@ -84,27 +91,32 @@
   tags:
     - prepair_devstack_host
 
-
-# The CentOS python-setuptools is too old
-# for devstack and it will use its own version
-# of setuptools
-#- name: uninstall OS python-setuptools
-#  become: yes
-#  package:
-#    name: python-setuptools
-#    state: absent
-- name: run unstack.sh to cleanup system
+- name: Running unstack.sh to clean system
   command: ./unstack.sh
   args:
     chdir: "{{ansible_env.HOME}}/devstack"
+  when: restack_devstack|default(False)|bool == true
+  ignore_errors: yes
+  environment:
+    PATH: "/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/centos/.local/bin:/home/centos/bin"
   tags:
     - deploy_devstack
+
+- name: Mark host as unstacked
+  file:
+    state: absent
+    path: "/opt/stack/system_stacked"
+  when: restack_devstack|default(False)|bool == true
+  tags:
+    - deploy_devstack
+
+
 
 - name: run stack.sh to deploy manila
   command: ./stack.sh
   args:
     chdir: "{{ansible_env.HOME}}/devstack"
-    creates: /opt/stack/manila
+    creates: /opt/stack/system_stacked
   tags:
     - deploy_devstack
 
