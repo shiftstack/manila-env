@@ -28,22 +28,6 @@
     port_range_min: 443
     port_range_max: 443
 
-- name: allow icmp on the private cluster network
-  os_security_group_rule:
-    state: present
-    security_group: manila-env-security-group
-    protocol: icmp
-    remote_ip_prefix: 192.168.0.0/24
-
-- name: allow unrestricted TCP on the private cluster network
-  os_security_group_rule:
-    state: present
-    security_group: manila-env-security-group
-    protocol: tcp
-    port_range_min: 1
-    port_range_max: 65535
-    remote_ip_prefix: 192.168.0.0/24
-
 - name: allow ping
   os_security_group_rule:
     state: present
@@ -75,27 +59,6 @@
     name: "{{ key_name }}"
     public_key_file: "{{ public_key_file }}"
 
-- name: create private network for the cluster
-  os_network:
-    state: present
-    name: manila-env-private-net
-    port_security_enabled: yes
-
-- name: create private subnet on that network
-  os_subnet:
-    state: present
-    network_name: manila-env-private-net
-    name: manila-env-private-subnet
-    cidr: 192.168.0.0/24
-    gateway_ip: 192.168.0.1
-
-- name: create router for the private network
-  os_router:
-    state: present
-    name: manila-env-private-router
-    interfaces: manila-env-private-subnet
-    network: external
-
 - name: launch devstack
   os_server:
     name: devstack
@@ -106,7 +69,7 @@
     security_groups: manila-env-security-group
     flavor: m1.large
     key_name: "{{ key_name }}"
-    network: manila-env-private-net
+    network: "{{ network_name }}"
     userdata: |
       #cloud-config
       runcmd:
